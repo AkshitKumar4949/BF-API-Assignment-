@@ -1,15 +1,17 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const dotenv = require("dotenv");
-dotenv.config();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const express = require("express");
-const app = express();
+const dotenv = require("dotenv");
 
+dotenv.config();
+
+const app = express();
 app.use(express.json());
 
-// health endpoint
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+// GET /health
 app.get("/health", (req, res) => {
   res.status(200).json({
     is_success: true,
@@ -17,7 +19,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// helper functions
+// Helper Functions
 const isPrime = (n) => {
   if (n < 2) return false;
   for (let i = 2; i * i <= n; i++) {
@@ -26,7 +28,7 @@ const isPrime = (n) => {
   return true;
 };
 
-const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
 const lcm = (a, b) => (a * b) / gcd(a, b);
 
 // POST /bfhl
@@ -42,31 +44,23 @@ app.post("/bfhl", async (req, res) => {
         fib[i] = fib[i - 1] + fib[i - 2];
       }
       data = fib.slice(0, n);
-    }
-
+    } 
     else if (body.prime) {
       data = body.prime.filter(isPrime);
-    }
-
+    } 
     else if (body.hcf) {
       data = body.hcf.reduce((a, b) => gcd(a, b));
-    }
-
+    } 
     else if (body.lcm) {
       data = body.lcm.reduce((a, b) => lcm(a, b));
-    }
-
+    } 
     else if (body.AI) {
-      const prompt = body.AI;
-
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(body.AI);
       const response = await result.response;
       data = response.text();
-    }
-
-
+    } 
     else {
-      return res.status(400).json({ is_success: false });
+      return res.status(400).json({ is_success: false, message: "No valid input provided" });
     }
 
     res.json({
@@ -75,10 +69,14 @@ app.post("/bfhl", async (req, res) => {
       data: data
     });
 
-  } catch {
-    res.status(500).json({ is_success: false });
+  } catch (error) {
+    console.error("Server Error:", error); 
+    res.status(500).json({ 
+      is_success: false, 
+      error: error.message 
+    });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Running on", PORT));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
